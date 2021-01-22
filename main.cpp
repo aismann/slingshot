@@ -1,138 +1,128 @@
-/*This source code copyrighted by Lazy Foo' Productions (2004-2020)
-and may not be redistributed without written permission.*/
 
-//Using SDL and standard IO
+
+#include <iostream>
 #include <SDL.h>
-#include <stdio.h>
+#include <SDL_image.h>
+#include <SDL_mixer.h>
+#include <SDL_ttf.h>
 
-//Screen dimension constants
-const int SCREEN_WIDTH = 640;
-const int SCREEN_HEIGHT = 480;
+const int SCREEN_WIDTH = 1024;
+const int SCREEN_HEIGHT = 574;
 
-//Starts up SDL and creates window
+SDL_Window* gWindow;
+SDL_Renderer* gRenderer;
+SDL_Event event;
+
+typedef struct Controller {
+	int up = 0;
+	int down = 0;
+	int left = 0;
+	int right = 0;
+	int jump = 0;
+	int attack = 0;
+	int shield = 0;
+	bool quit = false;
+    int click = 0;
+    int touch = 0;
+    SDL_Point mPosition = { 0 , 0 };
+};
+
+Controller input; 
+
 bool init();
+void updateInputState();
 
-//Loads media
-bool loadMedia();
-
-//Frees media and shuts down SDL
-void close();
-
-//The window we'll be rendering to
-SDL_Window* gWindow = NULL;
-
-//The surface contained by the window
-SDL_Surface* gScreenSurface = NULL;
-
-//The image we will load and show on the screen
-SDL_Surface* gXOut = NULL;
-
-bool init()
-{
-	//Initialization flag
-	bool success = true;
-
-	//Initialize SDL
-	if (SDL_Init(SDL_INIT_VIDEO) < 0)
-	{
-		printf("SDL could not initialize! SDL_Error: %s\n", SDL_GetError());
-		success = false;
+bool init(){
+	if (SDL_Init(SDL_INIT_EVERYTHING) < 0) {
+		printf("SDL could not be initialized! Error: %s", SDL_GetError());
+		return false;
 	}
-	else
-	{
-		//Create window
-		gWindow = SDL_CreateWindow("SDL Tutorial", SDL_WINDOWPOS_UNDEFINED, SDL_WINDOWPOS_UNDEFINED, SCREEN_WIDTH, SCREEN_HEIGHT, SDL_WINDOW_SHOWN);
-		if (gWindow == NULL)
-		{
-			printf("Window could not be created! SDL_Error: %s\n", SDL_GetError());
-			success = false;
-		}
-		else
-		{
-			//Get window surface
-			gScreenSurface = SDL_GetWindowSurface(gWindow);
-		}
+	if (IMG_Init(IMG_INIT_PNG) < 0) {
+		printf("IMG could not be initialized! Error %s\n", IMG_GetError());
+		return false;
 	}
+	if (TTF_Init() < 0) {
+		printf("TTF could not be initialized! Error %s\n", TTF_GetError());
+		return false;
+	}
+	gWindow = SDL_CreateWindow("slingshot", SDL_WINDOWPOS_CENTERED, SDL_WINDOWPOS_CENTERED, SCREEN_WIDTH, SCREEN_HEIGHT, 0);
+	if (gWindow == NULL) {
+		printf("Window could not be initialized %s\n", SDL_GetError());
+		return false;
+	}
+	gRenderer = SDL_CreateRenderer(gWindow, -1, SDL_RENDERER_ACCELERATED);
 
-	return success;
+	return true;
 }
-
-bool loadMedia()
-{
-	//Loading success flag
-	bool success = true;
-
-	//Load splash image
-	gXOut = SDL_LoadBMP("03_event_driven_programming/x.bmp");
-	if (gXOut == NULL)
-	{
-		printf("Unable to load image %s! SDL Error: %s\n", "03_event_driven_programming/x.bmp", SDL_GetError());
-		success = false;
-	}
-
-	return success;
+void updateInputState(Controller* input) {
+  
+ 
+    while (SDL_PollEvent(&event)) {
+        switch (event.type) {
+        case SDL_QUIT:
+            input->quit = true;
+            break;
+        case SDL_KEYDOWN:
+            switch (event.key.keysym.sym) {
+            case SDLK_UP:
+                input->up += 1;
+                break;
+            case SDLK_DOWN:
+                input->down += 1;
+                break;
+            case SDLK_LEFT:
+                input->left += 1;
+                break;
+            case SDLK_RIGHT:
+                input->right += 1;
+                break;
+            default:
+                break;
+            }
+            break;
+        case SDL_KEYUP:
+            switch (event.key.keysym.sym) {
+            case SDLK_UP:
+                input->up = 0;
+                break;
+            case SDLK_DOWN:
+                input->down = 0;
+                break;
+            case SDLK_LEFT:
+                input->left = 0;
+                break;
+            case SDLK_RIGHT:
+                input->right = 0;
+                break;
+            default:
+                break;
+            }
+            break;
+        case SDL_MOUSEMOTION:
+            SDL_GetMouseState(&input->mPosition.x, &input->mPosition.y);
+            break;
+        case SDL_MOUSEBUTTONDOWN:
+            input->click = 1;
+            break;
+        case SDL_MOUSEBUTTONUP:
+            input->click = 0;
+            break;
+        default:
+            break;
+        }
+    }
 }
+int main(int argc, char* args[]) {
 
-void close()
-{
-	//Deallocate surface
-	SDL_FreeSurface(gXOut);
-	gXOut = NULL;
+	std::cout << init();
 
-	//Destroy window
-	SDL_DestroyWindow(gWindow);
-	gWindow = NULL;
+    while (!input.quit) {
+        updateInputState(&input);
 
-	//Quit SDL subsystems
-	SDL_Quit();
-}
-
-int main(int argc, char* args[])
-{
-	//Start up SDL and create window
-	if (!init())
-	{
-		printf("Failed to initialize!\n");
-	}
-	else
-	{
-		//Load media
-		if (!loadMedia())
-		{
-			printf("Failed to load media!\n");
-		}
-		else
-		{
-			//Main loop flag
-			bool quit = false;
-
-			//Event handler
-			SDL_Event e;
-
-			//While application is running
-			while (!quit)
-			{
-				//Handle events on queue
-				while (SDL_PollEvent(&e) != 0)
-				{
-					//User requests quit
-					if (e.type == SDL_QUIT)
-					{
-						quit = true;
-					}
-				}
-
-				//Apply the image
-				SDL_BlitSurface(gXOut, NULL, gScreenSurface, NULL);
-
-				//Update the surface
-				SDL_UpdateWindowSurface(gWindow);
-			}
-		}
-	}
-
-	//Free resources and close SDL
-	close();
-
+        SDL_SetRenderDrawColor(gRenderer, 255, 255, 255, 255);
+        SDL_RenderClear(gRenderer);
+        
+        SDL_RenderPresent(gRenderer);
+    }
 	return 0;
 }
