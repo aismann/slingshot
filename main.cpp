@@ -59,6 +59,20 @@ bool init(){
 
 	return true;
 }
+
+void close() {
+
+    SDL_Quit();
+    IMG_Quit();
+    TTF_Quit();
+
+    SDL_DestroyWindow(gWindow);
+    SDL_DestroyRenderer(gRenderer);
+
+    gWindow = NULL;
+    gRenderer = NULL;
+
+}
 void updateInputState(Controller* input) {
   
  
@@ -140,6 +154,9 @@ void movePlayer(Controller* input, SDL_Rect* box) {
 
 const int GRAVITY = 5;
 const int TERMINAL_SPEED = 100;
+const int TERMINNAL_SPEED_X = 20;
+bool grounded = false;
+
 
 void gravity(SDL_Rect* box) {
 
@@ -175,15 +192,36 @@ void addGravity(MovableObject* player) {
     }
 }
 
+void addHorizontalVelocity(MovableObject* player, bool left) {
+    int push = 3;
+    if (left) {
+        //TODO: Fix left right issues with terminal speed 
+        if (-player->velocity_x < TERMINNAL_SPEED_X) {
+            player->velocity_x = player->velocity_x - push; 
+        }
+    }
+    else {
+        if (player->velocity_x < TERMINNAL_SPEED_X) {
+            player->velocity_x = player->velocity_x + push;
+        }
+    }
+}
+
 void physics(MovableObject* player) {
     player->box.y += player->velocity_y;
+    player->box.x += player->velocity_x;
+
+    printf("%d , %d", player->velocity_x, player->velocity_y);
 }
 
 void stopVelocityY(MovableObject* player) {
     player->velocity_y = 0;
 }
 
-bool grounded = false; 
+void stopVelocityX(MovableObject* player) {
+    player->velocity_x = 0;
+}
+
 
 
 int main(int argc, char* args[]) {
@@ -200,12 +238,19 @@ int main(int argc, char* args[]) {
         updateInputState(&input);
 
 
+        if (input.left) {
+            addHorizontalVelocity(&player, true);
+        }
+        else if (input.right) {
+            addHorizontalVelocity(&player, false);
+        }
 
         if (!grounded) {
             addGravity(&player);
             if ((player.box.y + player.box.h) >= SCREEN_HEIGHT) {
                 player.box.y = SCREEN_HEIGHT - player.box.h;
                 stopVelocityY(&player);
+                stopVelocityX(&player);
                 grounded = true;
             }
             else {
@@ -236,7 +281,9 @@ int main(int argc, char* args[]) {
             SDL_Delay(FRAME_DELAY - elapsed_ticks);
         }
         
-        
     }
+
+    close();
+
 	return 0;
 }
