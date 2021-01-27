@@ -5,6 +5,8 @@
 #include <SDL_image.h>
 #include <SDL_mixer.h>
 #include <SDL_ttf.h>
+#include <glm.hpp>
+#include <vec2.hpp>
 
 const int SCREEN_WIDTH = 1024;
 const int SCREEN_HEIGHT = 574;
@@ -139,6 +141,7 @@ void updateInputState(Controller* input) {
 
 
 SDL_Color red = { 255,0,0,255 };
+SDL_Color green = { 0,255,0,255 };
 
 void movePlayer(Controller* input, SDL_Rect* box) {
 
@@ -156,6 +159,8 @@ const int GRAVITY = 5;
 const int TERMINAL_SPEED = 100;
 const int TERMINNAL_SPEED_X = 20;
 bool grounded = false;
+const int FRICTION = 1;
+
 
 
 void gravity(SDL_Rect* box) {
@@ -169,26 +174,35 @@ void gravity(SDL_Rect* box) {
 
 }
 
+glm::vec2 pos = glm::vec2(0.0f, 0.0f);
 struct MovableObject {
-    SDL_Rect box = { 20,20,20,20 };
-    int velocity_x = 0;
-    int velocity_y = 0; 
-    int acceleration_x = 0;
-    int acceleration_y = 0;
+    int size = 50;
+    glm::vec2 pos = glm::vec2(0.0f, 0.0f);
+    glm::vec2 velocity = glm::vec2(0.0f, 0.0f);
+    glm::vec2 acceleration = glm::vec2(0.0f, 0.0f);
+
 
 };
 
 MovableObject player;
+MovableObject bullet;
 
+void render(MovableObject* obj , SDL_Color color) {
+
+    SDL_Rect temp = { obj->pos[0], obj->pos[1] , obj->size, obj->size };
+    SDL_SetRenderDrawColor(gRenderer, color.r, color.g, color.b, color.a);
+    SDL_RenderFillRect(gRenderer, &temp);
+
+}
 
 void addJump(MovableObject* player) {
 
-    player->velocity_y = -50;
+    player->velocity[1] = -50;
 }
 
 void addGravity(MovableObject* player) {
-    if (abs(player->velocity_y) <= TERMINAL_SPEED) {
-        player->velocity_y += GRAVITY;
+    if (abs(player->velocity[1]) <= TERMINAL_SPEED) {
+        player->velocity[1] += GRAVITY;
     }
 }
 
@@ -196,32 +210,74 @@ void addHorizontalVelocity(MovableObject* player, bool left) {
     int push = 3;
     if (left) {
         //TODO: Fix left right issues with terminal speed 
-        if (-player->velocity_x < TERMINNAL_SPEED_X) {
-            player->velocity_x = player->velocity_x - push; 
+        if (-player->velocity[0] < TERMINNAL_SPEED_X) {
+            player->velocity[0] = player->velocity[0] - push; 
         }
     }
     else {
-        if (player->velocity_x < TERMINNAL_SPEED_X) {
-            player->velocity_x = player->velocity_x + push;
+        if (player->velocity[0] < TERMINNAL_SPEED_X) {
+            player->velocity[0] = player->velocity[0] + push;
         }
     }
 }
 
-void physics(MovableObject* player) {
-    player->box.y += player->velocity_y;
-    player->box.x += player->velocity_x;
-
-    printf("%d , %d", player->velocity_x, player->velocity_y);
+void physics(MovableObject* obj) {
+    obj->pos[1] += obj->velocity[1];
+    obj->pos[0] += obj->velocity[0];
 }
 
 void stopVelocityY(MovableObject* player) {
-    player->velocity_y = 0;
+    player->velocity[1] = 0;
 }
 
 void stopVelocityX(MovableObject* player) {
-    player->velocity_x = 0;
+    player->velocity[0] = 0;
 }
 
+
+void addFriction(MovableObject* player) {
+    if (grounded && player->velocity[0] != 0) {
+        if (player->velocity[0] > FRICTION) {
+            player->velocity[0] = player->velocity[0] - FRICTION;
+        }
+        else if(player->velocity[0] < -FRICTION) {
+            player->velocity[0] = player->velocity[0] + FRICTION;
+        }
+        else {
+            player->velocity[0] = 0;
+        }
+    }
+}
+
+void shootBullet(MovableObject* player) {
+     
+}
+
+const float BULLET_SPEED = 4;
+
+//TODO: fiund more elegant solution for angles and negative values
+void spawnBullet(SDL_Point* click_position) {
+
+
+
+    glm::vec2 pt_start = player.pos;
+    glm::vec2 pt_end = glm::vec2(click_position->x, click_position->y);
+
+    glm::vec2 direction = pt_end - pt_start;
+    direction = glm::normalize(direction);
+
+    bullet.pos = player.pos;
+    bullet.velocity = direction * BULLET_SPEED;
+
+    printf("Mouse click %d %d \n ", click_position->x, click_position->y);
+    printf("Player pos %d %d \n ", player.pos[0], player.pos[1]);
+    printf("direction un normalized %f %f\n", direction[0], direction[1]);
+    printf("pt_start %.2f %.2f\n", pt_start[0], pt_start[1]);
+    printf("pt_end %.2f %.2f\n", pt_end[0], pt_end[1]);
+    std::cout << "Bullet shit " << bullet.velocity[0] << " " << bullet.velocity[1] << std::endl;
+    
+
+}
 
 
 int main(int argc, char* args[]) {
@@ -241,36 +297,44 @@ int main(int argc, char* args[]) {
         if (input.left) {
             addHorizontalVelocity(&player, true);
         }
-        else if (input.right) {
+        if (input.right) {
             addHorizontalVelocity(&player, false);
         }
 
         if (!grounded) {
             addGravity(&player);
-            if ((player.box.y + player.box.h) >= SCREEN_HEIGHT) {
-                player.box.y = SCREEN_HEIGHT - player.box.h;
+            if ((player.pos[1] + player.size) >= SCREEN_HEIGHT) {
+                player.pos[1] = SCREEN_HEIGHT - player.size;
                 stopVelocityY(&player);
-                stopVelocityX(&player);
+                //stopVelocityX(&player);
                 grounded = true;
             }
             else {
                 grounded = false;
             }
         }
+        else {
+            addFriction(&player);
+        }
         if (input.jump && grounded) {
             addJump(&player);
             grounded = false;
         }
+        if (input.click) {
+            spawnBullet(&input.mPosition);
+        }
         
 
         physics(&player);
+        physics(&bullet);
 
 
         SDL_SetRenderDrawColor(gRenderer, 255, 255, 255, 255);
         SDL_RenderClear(gRenderer);
 
-        SDL_SetRenderDrawColor(gRenderer, red.r, red.g, red.b, red.a);
-        SDL_RenderFillRect(gRenderer, &player.box);
+        render(&player, red);
+
+        render(&bullet, green);
         
         
         SDL_RenderPresent(gRenderer);
