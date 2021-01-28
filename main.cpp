@@ -7,6 +7,8 @@
 #include <SDL_ttf.h>
 #include <glm.hpp>
 #include <vec2.hpp>
+#include <math.h>
+
 
 const int SCREEN_WIDTH = 1024;
 const int SCREEN_HEIGHT = 574;
@@ -142,17 +144,15 @@ void updateInputState(Controller* input) {
 
 SDL_Color red = { 255,0,0,255 };
 SDL_Color green = { 0,255,0,255 };
+SDL_Color blue = { 0,0,255,0 };
+
 
 void movePlayer(Controller* input, SDL_Rect* box) {
-
     int horizontal_speed = 5;
     box->x = box->x + input->right*horizontal_speed;
     box->x = box->x - input->left*horizontal_speed;
     box->y = box->y + input->down;
     box->y = box->y - input->up;
-
-    
-
 }
 
 const int GRAVITY = 5;
@@ -161,7 +161,7 @@ const int TERMINNAL_SPEED_X = 20;
 bool grounded = false;
 const int FRICTION = 1;
 
-
+void renderCircle(glm::vec2 center, float radius, SDL_Color color);
 
 void gravity(SDL_Rect* box) {
 
@@ -174,14 +174,12 @@ void gravity(SDL_Rect* box) {
 
 }
 
-glm::vec2 pos = glm::vec2(0.0f, 0.0f);
+
 struct MovableObject {
     int size = 50;
     glm::vec2 pos = glm::vec2(0.0f, 0.0f);
     glm::vec2 velocity = glm::vec2(0.0f, 0.0f);
     glm::vec2 acceleration = glm::vec2(0.0f, 0.0f);
-
-
 };
 
 MovableObject player;
@@ -190,11 +188,14 @@ MovableObject bullet;
 void render(MovableObject* obj , SDL_Color color) {
 
     SDL_Rect temp = { obj->pos[0], obj->pos[1] , obj->size, obj->size };
-    SDL_SetRenderDrawColor(gRenderer, color.r, color.g, color.b, color.a);
-    SDL_RenderFillRect(gRenderer, &temp);
+    renderCircle(obj->pos, 1.0f* obj->size, color);
 
 }
 
+void renderRect(SDL_Rect* rect, SDL_Color color) {
+    SDL_SetRenderDrawColor(gRenderer, color.r, color.g, color.b, color.a);
+    SDL_RenderFillRect(gRenderer, rect);
+}
 void addJump(MovableObject* player) {
 
     player->velocity[1] = -50;
@@ -249,16 +250,10 @@ void addFriction(MovableObject* player) {
     }
 }
 
-void shootBullet(MovableObject* player) {
-     
-}
-
-const float BULLET_SPEED = 4;
+const float BULLET_SPEED = 8;
 
 //TODO: fiund more elegant solution for angles and negative values
-void spawnBullet(SDL_Point* click_position) {
-
-
+void shootBulletTowards(SDL_Point* click_position) {
 
     glm::vec2 pt_start = player.pos;
     glm::vec2 pt_end = glm::vec2(click_position->x, click_position->y);
@@ -269,16 +264,80 @@ void spawnBullet(SDL_Point* click_position) {
     bullet.pos = player.pos;
     bullet.velocity = direction * BULLET_SPEED;
 
-    printf("Mouse click %d %d \n ", click_position->x, click_position->y);
-    printf("Player pos %d %d \n ", player.pos[0], player.pos[1]);
-    printf("direction un normalized %f %f\n", direction[0], direction[1]);
-    printf("pt_start %.2f %.2f\n", pt_start[0], pt_start[1]);
-    printf("pt_end %.2f %.2f\n", pt_end[0], pt_end[1]);
-    std::cout << "Bullet shit " << bullet.velocity[0] << " " << bullet.velocity[1] << std::endl;
-    
 
 }
 
+
+
+void renderCircle(glm::vec2 center, float radius, SDL_Color color)
+{
+    SDL_SetRenderDrawColor(gRenderer, color.r, color.g, color.b, color.a);
+
+    int sides = 20;
+    if (sides == 0)
+    {
+        sides = M_PI * radius;
+    }
+
+    float d_a = 2*M_PI / sides,
+        angle = d_a;
+
+    glm::vec2 start, end;
+    end.x = radius;
+    end.y = 0.0f;
+    end = end + center;
+    for (int i = 0; i != sides; i++)
+    {
+        start = end;
+        end.x = cos(angle) * radius;
+        end.y = sin(angle) * radius;
+        end = end + center;
+        angle += d_a;
+        SDL_RenderDrawLine(gRenderer, start[0], start[1], end[0], end[1]);
+    }
+}
+
+
+SDL_Rect platform{ 200,80, 100,20 };
+
+
+int directionHit(MovableObject* obj, SDL_Rect* platform) {
+    //0 is for no hit 1 left, 2right 3 up 4 down
+
+    //initialize the x and y position of the closePoint vector
+    glm::vec2 close_point = obj->pos;
+    int flag = 0;
+    
+    //if the circle's center point is less than the left edge of the rectangle
+    if (obj->pos[0] < platform->x) {
+        close_point[0] = platform->x;
+        flag = 1;
+    }
+    //if circle center is on right side
+    else if (obj->pos[0] > platform->x + platform->w) {
+        close_point[0] = platform->x + platform->w;
+        flag = 2;
+    }
+    //if circle is on top
+    if (obj->pos[1] < platform->y) {
+        close_point[1] = platform->y;
+        flag = 3;
+    }
+    //bottom edge
+    else if (obj->pos[1] > platform->y + platform->h) {
+        close_point[1] = platform->y + platform->h;
+        flag = 4;
+    }
+
+    
+    glm::vec2 distance = obj->pos - close_point;
+    
+    if (glm::length(distance) < obj->size) {
+        return flag;
+    }
+
+    return 0;
+}
 
 int main(int argc, char* args[]) {
 
@@ -321,22 +380,24 @@ int main(int argc, char* args[]) {
             grounded = false;
         }
         if (input.click) {
-            spawnBullet(&input.mPosition);
+            shootBulletTowards(&input.mPosition);
         }
-        
-
+        int dir = directionHit(&bullet, &platform);
+        if (dir) {
+            std::cout << " hit!" << dir << std::endl;
+        }
         physics(&player);
         physics(&bullet);
 
 
-        SDL_SetRenderDrawColor(gRenderer, 255, 255, 255, 255);
+        SDL_SetRenderDrawColor(gRenderer, 0, 0, 0, 0);
         SDL_RenderClear(gRenderer);
 
         render(&player, red);
-
         render(&bullet, green);
+
         
-        
+        renderRect(&platform, blue);
         SDL_RenderPresent(gRenderer);
 
         elapsed_ticks = SDL_GetTicks() - frame_start;
