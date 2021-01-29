@@ -9,15 +9,10 @@
 #include <vec2.hpp>
 #include <math.h>
 
-
-const int SCREEN_WIDTH = 1024;
-const int SCREEN_HEIGHT = 574;
-const int FRAME_RATE = 60;
-const int FRAME_DELAY = 1000 / FRAME_RATE;
+#include "Context.h"
+#include "Shapes.h"
 
 
-SDL_Window* gWindow;
-SDL_Renderer* gRenderer;
 SDL_Event event;
 
 typedef struct Controller {
@@ -40,43 +35,6 @@ bool init();
 void updateInputState();
 
 
-
-bool init(){
-	if (SDL_Init(SDL_INIT_EVERYTHING) < 0) {
-		printf("SDL could not be initialized! Error: %s", SDL_GetError());
-		return false;
-	}
-	if (IMG_Init(IMG_INIT_PNG) < 0) {
-		printf("IMG could not be initialized! Error %s\n", IMG_GetError());
-		return false;
-	}
-	if (TTF_Init() < 0) {
-		printf("TTF could not be initialized! Error %s\n", TTF_GetError());
-		return false;
-	}
-	gWindow = SDL_CreateWindow("slingshot", SDL_WINDOWPOS_CENTERED, SDL_WINDOWPOS_CENTERED, SCREEN_WIDTH, SCREEN_HEIGHT, 0);
-	if (gWindow == NULL) {
-		printf("Window could not be initialized %s\n", SDL_GetError());
-		return false;
-	}
-	gRenderer = SDL_CreateRenderer(gWindow, -1, SDL_RENDERER_ACCELERATED);
-
-	return true;
-}
-
-void close() {
-
-    SDL_Quit();
-    IMG_Quit();
-    TTF_Quit();
-
-    SDL_DestroyWindow(gWindow);
-    SDL_DestroyRenderer(gRenderer);
-
-    gWindow = NULL;
-    gRenderer = NULL;
-
-}
 void updateInputState(Controller* input) {
   
  
@@ -170,13 +128,12 @@ void gravity(SDL_Rect* box) {
     if ((box->y + box->h) <= SCREEN_HEIGHT) {
         box->y = box->y + delta;
     }
-
-
 }
 
 
 struct MovableObject {
-    int size = 50;
+    struct Circle hitbox = { glm::vec2(0.0f, 0.0f) , normalized_tile/2 };
+    int radius = 0.5f * normalized_tile;
     glm::vec2 pos = glm::vec2(0.0f, 0.0f);
     glm::vec2 velocity = glm::vec2(0.0f, 0.0f);
     glm::vec2 acceleration = glm::vec2(0.0f, 0.0f);
@@ -185,16 +142,35 @@ struct MovableObject {
 MovableObject player;
 MovableObject bullet;
 
+void renderLines() {
+    SDL_SetRenderDrawColor(Renderer, 255, 255, 255, 255);
+    //horizontal lines
+    for (int i = 0; i < 9; i++) {
+        SDL_RenderDrawLine(Renderer, 0, i * normalized_tile, SCREEN_WIDTH, i * normalized_tile);
+    }
+
+    //vertical lines
+    for (int j = 0; j < 16; j++) {
+        SDL_RenderDrawLine(Renderer, j * normalized_tile, 0, j * normalized_tile, SCREEN_HEIGHT);
+    }
+}
+
 void render(MovableObject* obj , SDL_Color color) {
 
-    SDL_Rect temp = { obj->pos[0], obj->pos[1] , obj->size, obj->size };
-    renderCircle(obj->pos, 1.0f* obj->size, color);
+    SDL_Rect temp = { obj->pos[0], obj->pos[1] , obj->radius, obj->radius };
+    renderCircle(obj->pos, 1.0f* obj->radius, color);
 
 }
 
+void renderRectangle(Rectangle rect, SDL_Color color) {
+    SDL_SetRenderDrawColor(Renderer, color.r, color.g, color.b, color.a);
+    SDL_Rect temp = { (int) (rect.center[0] - rect.width / 2) , (int)(rect.center[1] - rect.height / 2), rect.width, rect.height };
+    SDL_RenderFillRect(Renderer, &temp);
+
+}
 void renderRect(SDL_Rect* rect, SDL_Color color) {
-    SDL_SetRenderDrawColor(gRenderer, color.r, color.g, color.b, color.a);
-    SDL_RenderFillRect(gRenderer, rect);
+    SDL_SetRenderDrawColor(Renderer, color.r, color.g, color.b, color.a);
+    SDL_RenderFillRect(Renderer, rect);
 }
 void addJump(MovableObject* player) {
 
@@ -225,6 +201,8 @@ void addHorizontalVelocity(MovableObject* player, bool left) {
 void physics(MovableObject* obj) {
     obj->pos[1] += obj->velocity[1];
     obj->pos[0] += obj->velocity[0];
+
+    obj->hitbox.center += obj->velocity;
 }
 
 void stopVelocityY(MovableObject* player) {
@@ -262,16 +240,42 @@ void shootBulletTowards(SDL_Point* click_position) {
     direction = glm::normalize(direction);
 
     bullet.pos = player.pos;
+    bullet.hitbox.center = player.pos;
+
     bullet.velocity = direction * BULLET_SPEED;
 
 
 }
 
+void renderCircle(Circle circle, SDL_Color color) {
+    SDL_SetRenderDrawColor(Renderer, color.r, color.g, color.b, color.a);
 
+    int sides = 20;
+    if (sides == 0)
+    {
+        sides = M_PI * circle.radius;
+    }
 
+    float d_a = 2 * M_PI / sides,
+        angle = d_a;
+
+    glm::vec2 start, end;
+    end.x = circle.radius;
+    end.y = 0.0f;
+    end = end + circle.center;
+    for (int i = 0; i != sides; i++)
+    {
+        start = end;
+        end.x = cos(angle) * circle.radius;
+        end.y = sin(angle) * circle.radius;
+        end = end + circle.center;
+        angle += d_a;
+        SDL_RenderDrawLine(Renderer, start[0], start[1], end[0], end[1]);
+    }
+}
 void renderCircle(glm::vec2 center, float radius, SDL_Color color)
 {
-    SDL_SetRenderDrawColor(gRenderer, color.r, color.g, color.b, color.a);
+    SDL_SetRenderDrawColor(Renderer, color.r, color.g, color.b, color.a);
 
     int sides = 20;
     if (sides == 0)
@@ -293,16 +297,18 @@ void renderCircle(glm::vec2 center, float radius, SDL_Color color)
         end.y = sin(angle) * radius;
         end = end + center;
         angle += d_a;
-        SDL_RenderDrawLine(gRenderer, start[0], start[1], end[0], end[1]);
+        SDL_RenderDrawLine(Renderer, start[0], start[1], end[0], end[1]);
     }
 }
 
 
-SDL_Rect platform{ 200,80, 100,20 };
+SDL_Rect platform{ normalized_tile*0, normalized_tile*4, normalized_tile*7, normalized_tile*4 };
+Rectangle platf = { glm::vec2(platform.x + platform.w / 2, platform.y + platform.h / 2), platform.w, platform.h};
+
 
 
 int directionHit(MovableObject* obj, SDL_Rect* platform) {
-    //0 is for no hit 1 left, 2right 3 up 4 down
+    //0 is for no hit 1 left, 2right 3 up 4 down 5 is for corner.
 
     //initialize the x and y position of the closePoint vector
     glm::vec2 close_point = obj->pos;
@@ -329,22 +335,48 @@ int directionHit(MovableObject* obj, SDL_Rect* platform) {
         flag = 4;
     }
 
+    //hits edge 
+    if (obj->pos[0] != close_point[0] && obj->pos[1] != close_point[1]) {
+        flag = 5;
+    }
+    
     
     glm::vec2 distance = obj->pos - close_point;
     
-    if (glm::length(distance) < obj->size) {
+    if (glm::length(distance) < obj->radius) {
+        //make sure that the obj is not inside the platform when the physics step is applied. 
+        glm::vec2 penetration_depth = glm::normalize(distance) * (obj->radius - glm::length(distance));
+        obj->pos += penetration_depth*2.0f;
         return flag;
     }
 
     return 0;
 }
 
+void recoil(MovableObject* obj, int dirofhit) {
+
+    //if hit from left or right
+    if (dirofhit == 1 || dirofhit == 2) {
+        obj->velocity[0] = -obj->velocity[0];
+    }
+    if (dirofhit == 3 || dirofhit == 4) {
+        obj->velocity[1] = -obj->velocity[1];
+    }
+    if (dirofhit == 5) {
+        obj->velocity = -1.0f * obj->velocity;
+    }
+}
+
 int main(int argc, char* args[]) {
 
-	std::cout << init();
+	std::cout << initialize_framework();
 
     int frame_start;
     int elapsed_ticks;
+
+    debugInfo(platf, true);
+
+    
 
     while (!input.quit) {
 
@@ -362,8 +394,8 @@ int main(int argc, char* args[]) {
 
         if (!grounded) {
             addGravity(&player);
-            if ((player.pos[1] + player.size) >= SCREEN_HEIGHT) {
-                player.pos[1] = SCREEN_HEIGHT - player.size;
+            if ((player.hitbox.center[1] + player.radius) >= SCREEN_HEIGHT) {
+                player.hitbox.center[1] = SCREEN_HEIGHT - player.radius;
                 stopVelocityY(&player);
                 //stopVelocityX(&player);
                 grounded = true;
@@ -382,23 +414,28 @@ int main(int argc, char* args[]) {
         if (input.click) {
             shootBulletTowards(&input.mPosition);
         }
-        int dir = directionHit(&bullet, &platform);
-        if (dir) {
-            std::cout << " hit!" << dir << std::endl;
+
+        int dir2 = directionOfHit(&bullet.hitbox, &platf);
+        
+        if (dir2) {
+            recoil(&bullet, dir2);
         }
         physics(&player);
         physics(&bullet);
 
 
-        SDL_SetRenderDrawColor(gRenderer, 0, 0, 0, 0);
-        SDL_RenderClear(gRenderer);
+        SDL_SetRenderDrawColor(Renderer, 0, 0, 0, 0);
+        SDL_RenderClear(Renderer);
 
-        render(&player, red);
-        render(&bullet, green);
+        renderLines();
 
-        
-        renderRect(&platform, blue);
-        SDL_RenderPresent(gRenderer);
+        renderCircle(player.hitbox, red);
+        //render(&bullet, green);
+        renderCircle(bullet.hitbox, green);
+
+        renderRectangle(platf, blue);
+        //renderRect(&platform, blue);
+        SDL_RenderPresent(Renderer);
 
         elapsed_ticks = SDL_GetTicks() - frame_start;
 
@@ -408,7 +445,7 @@ int main(int argc, char* args[]) {
         
     }
 
-    close();
+    close_framework();
 
 	return 0;
 }
