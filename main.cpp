@@ -142,38 +142,8 @@ struct MovableObject {
 MovableObject player;
 MovableObject bullet;
 
-void renderLines() {
-    SDL_SetRenderDrawColor(Renderer, 255, 255, 255, 255);
-    //horizontal lines
-    for (int i = 0; i < 9; i++) {
-        SDL_RenderDrawLine(Renderer, 0, i * normalized_tile, SCREEN_WIDTH, i * normalized_tile);
-    }
 
-    //vertical lines
-    for (int j = 0; j < 16; j++) {
-        SDL_RenderDrawLine(Renderer, j * normalized_tile, 0, j * normalized_tile, SCREEN_HEIGHT);
-    }
-}
-
-void render(MovableObject* obj , SDL_Color color) {
-
-    SDL_Rect temp = { obj->pos[0], obj->pos[1] , obj->radius, obj->radius };
-    renderCircle(obj->pos, 1.0f* obj->radius, color);
-
-}
-
-void renderRectangle(Rectangle rect, SDL_Color color) {
-    SDL_SetRenderDrawColor(Renderer, color.r, color.g, color.b, color.a);
-    SDL_Rect temp = { (int) (rect.center[0] - rect.width / 2) , (int)(rect.center[1] - rect.height / 2), rect.width, rect.height };
-    SDL_RenderFillRect(Renderer, &temp);
-
-}
-void renderRect(SDL_Rect* rect, SDL_Color color) {
-    SDL_SetRenderDrawColor(Renderer, color.r, color.g, color.b, color.a);
-    SDL_RenderFillRect(Renderer, rect);
-}
 void addJump(MovableObject* player) {
-
     player->velocity[1] = -50;
 }
 
@@ -247,59 +217,6 @@ void shootBulletTowards(SDL_Point* click_position) {
 
 }
 
-void renderCircle(Circle circle, SDL_Color color) {
-    SDL_SetRenderDrawColor(Renderer, color.r, color.g, color.b, color.a);
-
-    int sides = 20;
-    if (sides == 0)
-    {
-        sides = M_PI * circle.radius;
-    }
-
-    float d_a = 2 * M_PI / sides,
-        angle = d_a;
-
-    glm::vec2 start, end;
-    end.x = circle.radius;
-    end.y = 0.0f;
-    end = end + circle.center;
-    for (int i = 0; i != sides; i++)
-    {
-        start = end;
-        end.x = cos(angle) * circle.radius;
-        end.y = sin(angle) * circle.radius;
-        end = end + circle.center;
-        angle += d_a;
-        SDL_RenderDrawLine(Renderer, start[0], start[1], end[0], end[1]);
-    }
-}
-void renderCircle(glm::vec2 center, float radius, SDL_Color color)
-{
-    SDL_SetRenderDrawColor(Renderer, color.r, color.g, color.b, color.a);
-
-    int sides = 20;
-    if (sides == 0)
-    {
-        sides = M_PI * radius;
-    }
-
-    float d_a = 2*M_PI / sides,
-        angle = d_a;
-
-    glm::vec2 start, end;
-    end.x = radius;
-    end.y = 0.0f;
-    end = end + center;
-    for (int i = 0; i != sides; i++)
-    {
-        start = end;
-        end.x = cos(angle) * radius;
-        end.y = sin(angle) * radius;
-        end = end + center;
-        angle += d_a;
-        SDL_RenderDrawLine(Renderer, start[0], start[1], end[0], end[1]);
-    }
-}
 
 
 SDL_Rect platform{ normalized_tile*0, normalized_tile*4, normalized_tile*7, normalized_tile*4 };
@@ -427,14 +344,12 @@ int main(int argc, char* args[]) {
         SDL_SetRenderDrawColor(Renderer, 0, 0, 0, 0);
         SDL_RenderClear(Renderer);
 
-        renderLines();
+        renderGridLines();
 
-        renderCircle(player.hitbox, red);
-        //render(&bullet, green);
-        renderCircle(bullet.hitbox, green);
+        RenderShape(&player.hitbox, red);
+        RenderShape(&bullet.hitbox, green);
+        RenderShape(&platf, blue);
 
-        renderRectangle(platf, blue);
-        //renderRect(&platform, blue);
         SDL_RenderPresent(Renderer);
 
         elapsed_ticks = SDL_GetTicks() - frame_start;

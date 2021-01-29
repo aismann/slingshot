@@ -17,6 +17,8 @@ extern const int FRAME_DELAY;
 extern SDL_Renderer* Renderer;
 extern SDL_Window* Window;
 
+void renderGridLines();
+
 //initialize sdl packages and window/renderer
 bool initialize_framework();
 void close_framework();

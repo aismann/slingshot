@@ -52,3 +52,17 @@ void close_framework() {
 	Renderer = NULL;
 
 }
+
+void renderGridLines() {
+
+	SDL_SetRenderDrawColor(Renderer, 255, 255, 255, 255);
+	//horizontal lines
+	for (int i = 0; i < 9; i++) {
+		SDL_RenderDrawLine(Renderer, 0, i * normalized_tile, SCREEN_WIDTH, i * normalized_tile);
+	}
+
+	//vertical lines
+	for (int j = 0; j < 16; j++) {
+		SDL_RenderDrawLine(Renderer, j * normalized_tile, 0, j * normalized_tile, SCREEN_HEIGHT);
+	}
+}

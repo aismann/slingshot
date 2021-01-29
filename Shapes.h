@@ -4,6 +4,7 @@
 
 #include "glm.hpp"
 #include "vec2.hpp"
+#include "Context.h"
 #include <stdio.h>
 
 typedef struct Circle;
@@ -39,5 +40,8 @@ int directionOfHit(Circle *circle, Rectangle *rect);
 void debugInfo(Rectangle rectangle,bool coordinates = false);
 void debugInfo(Circle circle);
 void debugInfo(Point point);
+
+void RenderShape(Circle* circle,SDL_Color color);
+void RenderShape(Rectangle* rectangle, SDL_Color color);
 
 #endif // !_SHAPES_H
