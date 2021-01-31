@@ -66,3 +66,30 @@ void renderGridLines() {
 		SDL_RenderDrawLine(Renderer, j * normalized_tile, 0, j * normalized_tile, SCREEN_HEIGHT);
 	}
 }
+
+SDL_Texture* loadTexture(std::string filename) {
+	//The final texture
+	SDL_Texture* newTexture = NULL;
+
+	//Load image at specified path
+	SDL_Surface* loadedSurface = IMG_Load(filename.c_str());
+	if (loadedSurface == NULL)
+	{
+		printf("Unable to load image %s! SDL_image Error: %s\n", filename.c_str(), IMG_GetError());
+	}
+	else
+	{
+		//Create texture from surface pixels
+		newTexture = SDL_CreateTextureFromSurface(Renderer, loadedSurface);
+		if (newTexture == NULL)
+		{
+			printf("Unable to create texture from %s! SDL Error: %s\n", filename.c_str(), SDL_GetError());
+		}
+
+		//Get rid of old loaded surface
+		SDL_FreeSurface(loadedSurface);
+	}
+
+	return newTexture;
+}
+

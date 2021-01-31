@@ -56,21 +56,6 @@ int directionOfHit(Circle* circle, Rectangle* rect) {
     return 0;
 }
 
-void debugInfo(Rectangle rectangle,bool coordinates) {
-    if (coordinates) {
-        printf("[%d,%d], [%d,%d], [%d,%d], [%d,%d] \n", (int)(rectangle.center[0] - rectangle.width / 2), (int)(rectangle.center[1] - rectangle.height / 2),
-            (int)(rectangle.center[0] - rectangle.width / 2), (int)(rectangle.center[1] + rectangle.height / 2),
-            (int)(rectangle.center[0] + rectangle.width / 2), (int)(rectangle.center[1] - rectangle.height / 2),
-            (int)(rectangle.center[0] + rectangle.width / 2), (int)(rectangle.center[1] + rectangle.height / 2)
-        );
-    }
-    else {
-        printf("Center = (%d, %d) | Width = %d | Height = %d", (int)(rectangle.center[0]), (int)(rectangle.center[1]), rectangle.width, rectangle.height);
-
-    }
-
-}
-
 void RenderShape(Circle* circle, SDL_Color color) {
     SDL_SetRenderDrawColor(Renderer, color.r, color.g, color.b, color.a);
 
@@ -102,4 +87,23 @@ void RenderShape(Rectangle* rectangle, SDL_Color color) {
     SDL_SetRenderDrawColor(Renderer, color.r, color.g, color.b, color.a);
     SDL_Rect temp = { (int)(rectangle->center[0] - rectangle->width / 2) , (int)(rectangle->center[1] - rectangle->height / 2), rectangle->width, rectangle->height };
     SDL_RenderFillRect(Renderer, &temp);
+}
+
+void debugInfo(Rectangle rectangle, bool coordinates) {
+    if (coordinates) {
+        printf("[%d,%d], [%d,%d], [%d,%d], [%d,%d] \n", (int)(rectangle.center[0] - rectangle.width / 2), (int)(rectangle.center[1] - rectangle.height / 2),
+            (int)(rectangle.center[0] - rectangle.width / 2), (int)(rectangle.center[1] + rectangle.height / 2),
+            (int)(rectangle.center[0] + rectangle.width / 2), (int)(rectangle.center[1] - rectangle.height / 2),
+            (int)(rectangle.center[0] + rectangle.width / 2), (int)(rectangle.center[1] + rectangle.height / 2)
+        );
+    }
+    else {
+        printf("Center = [%d, %d] | Width = %d | Height = %d\n", (int)(rectangle.center[0]), (int)(rectangle.center[1]), rectangle.width, rectangle.height);
+
+    }
+
+}
+
+void debugInfo(Circle circle) {
+    printf("Center = [%d, %d] | Radius = %d\n", circle.center[0], circle.center[1], circle.radius);
 }

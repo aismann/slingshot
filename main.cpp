@@ -11,6 +11,7 @@
 
 #include "Context.h"
 #include "Shapes.h"
+#include "Physics.h"
 
 
 SDL_Event event;
@@ -113,93 +114,20 @@ void movePlayer(Controller* input, SDL_Rect* box) {
     box->y = box->y - input->up;
 }
 
-const int GRAVITY = 5;
-const int TERMINAL_SPEED = 100;
-const int TERMINNAL_SPEED_X = 20;
-bool grounded = false;
-const int FRICTION = 1;
 
-void renderCircle(glm::vec2 center, float radius, SDL_Color color);
-
-void gravity(SDL_Rect* box) {
-
-    int delta = 10; 
-
-    if ((box->y + box->h) <= SCREEN_HEIGHT) {
-        box->y = box->y + delta;
-    }
-}
 
 
 struct MovableObject {
-    struct Circle hitbox = { glm::vec2(0.0f, 0.0f) , normalized_tile/2 };
-    int radius = 0.5f * normalized_tile;
-    glm::vec2 pos = glm::vec2(0.0f, 0.0f);
-    glm::vec2 velocity = glm::vec2(0.0f, 0.0f);
-    glm::vec2 acceleration = glm::vec2(0.0f, 0.0f);
+    Circle hitbox = { glm::vec2(0.0f, 0.0f) , normalized_tile/2 };
+    PhysicsComponent physics;
+    bool on_ground;
 };
 
 MovableObject player;
 MovableObject bullet;
 
 
-void addJump(MovableObject* player) {
-    player->velocity[1] = -50;
-}
-
-void addGravity(MovableObject* player) {
-    if (abs(player->velocity[1]) <= TERMINAL_SPEED) {
-        player->velocity[1] += GRAVITY;
-    }
-}
-
-void addHorizontalVelocity(MovableObject* player, bool left) {
-    int push = 3;
-    if (left) {
-        //TODO: Fix left right issues with terminal speed 
-        if (-player->velocity[0] < TERMINNAL_SPEED_X) {
-            player->velocity[0] = player->velocity[0] - push; 
-        }
-    }
-    else {
-        if (player->velocity[0] < TERMINNAL_SPEED_X) {
-            player->velocity[0] = player->velocity[0] + push;
-        }
-    }
-}
-
-void physics(MovableObject* obj) {
-    obj->pos[1] += obj->velocity[1];
-    obj->pos[0] += obj->velocity[0];
-
-    obj->hitbox.center += obj->velocity;
-}
-
-void stopVelocityY(MovableObject* player) {
-    player->velocity[1] = 0;
-}
-
-void stopVelocityX(MovableObject* player) {
-    player->velocity[0] = 0;
-}
-
-
-void addFriction(MovableObject* player) {
-    if (grounded && player->velocity[0] != 0) {
-        if (player->velocity[0] > FRICTION) {
-            player->velocity[0] = player->velocity[0] - FRICTION;
-        }
-        else if(player->velocity[0] < -FRICTION) {
-            player->velocity[0] = player->velocity[0] + FRICTION;
-        }
-        else {
-            player->velocity[0] = 0;
-        }
-    }
-}
-
-const float BULLET_SPEED = 8;
-
+/*
 //TODO: fiund more elegant solution for angles and negative values
 void shootBulletTowards(SDL_Point* click_position) {
 
@@ -212,64 +140,15 @@ void shootBulletTowards(SDL_Point* click_position) {
     bullet.pos = player.pos;
     bullet.hitbox.center = player.pos;
 
-    bullet.velocity = direction * BULLET_SPEED;
-
-
+    bullet.velocity = direction * BULLET_SPEED; 
 }
-
-
+*/
 
 SDL_Rect platform{ normalized_tile*0, normalized_tile*4, normalized_tile*7, normalized_tile*4 };
 Rectangle platf = { glm::vec2(platform.x + platform.w / 2, platform.y + platform.h / 2), platform.w, platform.h};
 
 
-
-int directionHit(MovableObject* obj, SDL_Rect* platform) {
-    //0 is for no hit 1 left, 2right 3 up 4 down 5 is for corner.
-
-    //initialize the x and y position of the closePoint vector
-    glm::vec2 close_point = obj->pos;
-    int flag = 0;
-    
-    //if the circle's center point is less than the left edge of the rectangle
-    if (obj->pos[0] < platform->x) {
-        close_point[0] = platform->x;
-        flag = 1;
-    }
-    //if circle center is on right side
-    else if (obj->pos[0] > platform->x + platform->w) {
-        close_point[0] = platform->x + platform->w;
-        flag = 2;
-    }
-    //if circle is on top
-    if (obj->pos[1] < platform->y) {
-        close_point[1] = platform->y;
-        flag = 3;
-    }
-    //bottom edge
-    else if (obj->pos[1] > platform->y + platform->h) {
-        close_point[1] = platform->y + platform->h;
-        flag = 4;
-    }
-
-    //hits edge 
-    if (obj->pos[0] != close_point[0] && obj->pos[1] != close_point[1]) {
-        flag = 5;
-    }
-    
-    
-    glm::vec2 distance = obj->pos - close_point;
-    
-    if (glm::length(distance) < obj->radius) {
-        //make sure that the obj is not inside the platform when the physics step is applied. 
-        glm::vec2 penetration_depth = glm::normalize(distance) * (obj->radius - glm::length(distance));
-        obj->pos += penetration_depth*2.0f;
-        return flag;
-    }
-
-    return 0;
-}
-
+/*
 void recoil(MovableObject* obj, int dirofhit) {
 
     //if hit from left or right
@@ -281,9 +160,10 @@ void recoil(MovableObject* obj, int dirofhit) {
     }
     if (dirofhit == 5) {
         obj->velocity = -1.0f * obj->velocity;
-    }
+    } 
 }
-
+*/
+bool gravity_applied = false;
 int main(int argc, char* args[]) {
 
 	std::cout << initialize_framework();
@@ -291,9 +171,9 @@ int main(int argc, char* args[]) {
     int frame_start;
     int elapsed_ticks;
 
-    debugInfo(platf, true);
+    player.hitbox.center = glm::vec2(normalized_tile * 0, normalized_tile * 5);
 
-    
+    SDL_Texture* testText = loadTexture("C:\\Users\\aliha\\Downloads\\sprites\\player\\dustkid\\idle\\idle0001.png");
 
     while (!input.quit) {
 
@@ -301,45 +181,36 @@ int main(int argc, char* args[]) {
 
         updateInputState(&input);
 
-
+        /*
         if (input.left) {
-            addHorizontalVelocity(&player, true);
+            addMomentum(&player.physics, glm::vec2(-4, 0));
         }
         if (input.right) {
-            addHorizontalVelocity(&player, false);
+            addMomentum(&player.physics, glm::vec2(4, 0));
         }
-
-        if (!grounded) {
-            addGravity(&player);
-            if ((player.hitbox.center[1] + player.radius) >= SCREEN_HEIGHT) {
-                player.hitbox.center[1] = SCREEN_HEIGHT - player.radius;
-                stopVelocityY(&player);
-                //stopVelocityX(&player);
-                grounded = true;
-            }
-            else {
-                grounded = false;
-            }
+        if (!player.on_ground && !gravity_applied) {
+            //add gravity
+            addForce(&player.physics, glm::vec2(0, 1));
+            gravity_applied = true;
         }
-        else {
-            addFriction(&player);
+        //todo::remove when collision with rectangles gets fleshed out
+        //if player hits the ground 
+        if (player.hitbox.center[1] + player.hitbox.radius > SCREEN_HEIGHT) {
+            player.on_ground = true;
+            //remove gravity
+            removeVerticalForce(&player.physics);
+            removeVerticalMomentum(&player.physics);
+            gravity_applied = false;
         }
-        if (input.jump && grounded) {
-            addJump(&player);
-            grounded = false;
-        }
-        if (input.click) {
-            shootBulletTowards(&input.mPosition);
-        }
-
-        int dir2 = directionOfHit(&bullet.hitbox, &platf);
         
-        if (dir2) {
-            recoil(&bullet, dir2);
-        }
-        physics(&player);
-        physics(&bullet);
+        if (input.jump && player.on_ground) {
+            addMomentum(&player.physics, glm::vec2(0,-20));
+            player.on_ground = false;
 
+        }
+        
+        addFriction(&player.physics);
+        integration(&player.hitbox.center, &player.physics);
 
         SDL_SetRenderDrawColor(Renderer, 0, 0, 0, 0);
         SDL_RenderClear(Renderer);
@@ -349,6 +220,9 @@ int main(int argc, char* args[]) {
         RenderShape(&player.hitbox, red);
         RenderShape(&bullet.hitbox, green);
         RenderShape(&platf, blue);
+        */
+        
+        SDL_RenderCopy(Renderer, testText, NULL, NULL);
 
         SDL_RenderPresent(Renderer);
 
