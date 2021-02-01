@@ -20,6 +20,7 @@ extern SDL_Window* Window;
 void renderGridLines();
 
 SDL_Texture* loadTexture(std::string filename);
+void closeTexture(SDL_Texture* texture);
 
 //initialize sdl packages and window/renderer
 bool initialize_framework();

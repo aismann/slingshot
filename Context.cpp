@@ -93,3 +93,7 @@ SDL_Texture* loadTexture(std::string filename) {
 	return newTexture;
 }
 
+void closeTexture(SDL_Texture* texture) {
+	SDL_DestroyTexture(texture);
+	texture = NULL;
+}

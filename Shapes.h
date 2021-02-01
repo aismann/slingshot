@@ -43,5 +43,7 @@ void debugInfo(Point point);
 
 void RenderShape(Circle* circle,SDL_Color color);
 void RenderShape(Rectangle* rectangle, SDL_Color color);
+void RenderShape(Circle* circle, SDL_Color color, int camera_x, int camera_y);
+
 
 #endif // !_SHAPES_H

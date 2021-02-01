@@ -8,17 +8,14 @@
 #include <SDL.h>
 #include "Context.h"
 
-std::map<std::string, SDL_Texture*> GraphicsManager; 
+extern std::map<std::string, SDL_Texture*> GraphicsManager; 
 
-void addTexture(std::string name, std::string filename) {
-	GraphicsManager[name] = loadTexture(filename);
-}
+void insertTexture(std::string name, std::string filepath);
 
-void removeTexture(std::string name) {
-	SDL_Texture* temp = GraphicsManager[name];
-	SDL_DestroyTexture(temp);
-	temp = NULL;
-	GraphicsManager.erase(name);
-}
+SDL_Texture* queryTexture(std::string name);
+
+void removeTexture(std::string name);
+
+
 #endif // !_ASSETMANAGER_H
 

@@ -83,6 +83,38 @@ void RenderShape(Circle* circle, SDL_Color color) {
     }
 }
 
+void RenderShape(Circle* circle, SDL_Color color, int camera_x, int camera_y) {
+    SDL_SetRenderDrawColor(Renderer, color.r, color.g, color.b, color.a);
+
+    glm::vec2 cam_center = circle->center;
+    cam_center[0] = cam_center[0] - camera_x;
+    cam_center[1] = cam_center[1] - camera_y;
+
+    int sides = 20;
+    if (sides == 0)
+    {
+        sides = M_PI * circle->radius;
+    }
+
+    float d_a = 2 * M_PI / sides,
+        angle = d_a;
+
+    glm::vec2 start, end;
+    end.x = circle->radius;
+    end.y = 0.0f;
+    end = end + cam_center;
+    for (int i = 0; i != sides; i++)
+    {
+        start = end;
+        end.x = cos(angle) * circle->radius;
+        end.y = sin(angle) * circle->radius;
+        end = end + cam_center;
+        angle += d_a;
+        SDL_RenderDrawLine(Renderer, start[0], start[1], end[0], end[1]);
+    }
+}
+
+
 void RenderShape(Rectangle* rectangle, SDL_Color color) {
     SDL_SetRenderDrawColor(Renderer, color.r, color.g, color.b, color.a);
     SDL_Rect temp = { (int)(rectangle->center[0] - rectangle->width / 2) , (int)(rectangle->center[1] - rectangle->height / 2), rectangle->width, rectangle->height };

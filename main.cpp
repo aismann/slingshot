@@ -12,7 +12,12 @@
 #include "Context.h"
 #include "Shapes.h"
 #include "Physics.h"
+#include "AssetManager.h"
+#include "Texture.h"
 
+
+const int LEVEL_WIDTH = 1280;
+const int LEVEL_HEIGHT = 960;
 
 SDL_Event event;
 
@@ -31,10 +36,6 @@ typedef struct Controller {
 };
 
 Controller input; 
-
-bool init();
-void updateInputState();
-
 
 void updateInputState(Controller* input) {
   
@@ -163,6 +164,10 @@ void recoil(MovableObject* obj, int dirofhit) {
     } 
 }
 */
+
+void printRect(SDL_Rect rect) {
+    printf("[%d %d %d %d]\n", rect.x, rect.y, rect.w, rect.h);
+}
 bool gravity_applied = false;
 int main(int argc, char* args[]) {
 
@@ -171,17 +176,33 @@ int main(int argc, char* args[]) {
     int frame_start;
     int elapsed_ticks;
 
-    player.hitbox.center = glm::vec2(normalized_tile * 0, normalized_tile * 5);
+    player.hitbox.center = glm::vec2(normalized_tile * 0, normalized_tile * 0);
 
-    SDL_Texture* testText = loadTexture("C:\\Users\\aliha\\Downloads\\sprites\\player\\dustkid\\idle\\idle0001.png");
+    SDL_Rect camera = { 0,0, SCREEN_WIDTH,SCREEN_HEIGHT };
+
+    std::string dustkid_filename = "C:\\Users\\aliha\\Downloads\\sprites\\player\\dustkid\\idle\\idle0001.png";
+    std::string bg_filename = "C:\\Users\\aliha\\Downloads\\30_scrolling\\30_scrolling\\bg.png";
+    insertTexture("dustkid", dustkid_filename);
+    insertTexture("bg", bg_filename);
+    TextureID dustkid;
+    setTextureID(&dustkid, "dustkid");
+    TextureID background;
+    setTextureID(&background, "bg");
+
+    
+    printRect(dustkid.src);
+    printRect(background.src);
+
+    player.hitbox.center[0] = LEVEL_WIDTH / 2;
+    player.hitbox.center[1] = LEVEL_HEIGHT / 2;
+    
 
     while (!input.quit) {
 
         frame_start = SDL_GetTicks();
 
         updateInputState(&input);
-
-        /*
+    
         if (input.left) {
             addMomentum(&player.physics, glm::vec2(-4, 0));
         }
@@ -195,7 +216,7 @@ int main(int argc, char* args[]) {
         }
         //todo::remove when collision with rectangles gets fleshed out
         //if player hits the ground 
-        if (player.hitbox.center[1] + player.hitbox.radius > SCREEN_HEIGHT) {
+        if (player.hitbox.center[1] + player.hitbox.radius > LEVEL_HEIGHT/2) {
             player.on_ground = true;
             //remove gravity
             removeVerticalForce(&player.physics);
@@ -204,26 +225,47 @@ int main(int argc, char* args[]) {
         }
         
         if (input.jump && player.on_ground) {
-            addMomentum(&player.physics, glm::vec2(0,-20));
+            addMomentum(&player.physics, glm::vec2(0,-30));
             player.on_ground = false;
 
         }
         
         addFriction(&player.physics);
         integration(&player.hitbox.center, &player.physics);
+        
+        //TODO convert dimensions into 2d glm vectors
+        camera.x = player.hitbox.center[0] - SCREEN_WIDTH / 2;
+        camera.y = player.hitbox.center[1] - SCREEN_HEIGHT / 2;
+
+        //Keep the camera in bounds
+        if (camera.x < 0)
+        {
+            camera.x = 0;
+        }
+        if (camera.y < 0)
+        {
+            camera.y = 0;
+        }
+        if (camera.x > LEVEL_WIDTH - camera.w)
+        { 
+            camera.x = LEVEL_WIDTH - camera.w;
+        }
+        if (camera.y > LEVEL_HEIGHT - camera.h)
+        {
+            camera.y = LEVEL_HEIGHT - camera.h;
+        }
 
         SDL_SetRenderDrawColor(Renderer, 0, 0, 0, 0);
         SDL_RenderClear(Renderer);
 
-        renderGridLines();
+        RenderTextureID(&background,0,0, &camera);
 
-        RenderShape(&player.hitbox, red);
-        RenderShape(&bullet.hitbox, green);
-        RenderShape(&platf, blue);
-        */
+        RenderTextureID(&dustkid,player.hitbox.center[0] - camera.x,player.hitbox.center[1] - camera.y);
+
+
+        //RenderShape(&player.hitbox, red, camera.x , camera.y);
         
-        SDL_RenderCopy(Renderer, testText, NULL, NULL);
-
+        
         SDL_RenderPresent(Renderer);
 
         elapsed_ticks = SDL_GetTicks() - frame_start;
@@ -233,6 +275,11 @@ int main(int argc, char* args[]) {
         }
         
     }
+
+
+    //TODO write a function that closes the asset manager
+    removeTexture("dustkid");
+    removeTexture("bg");
 
     close_framework();
 
