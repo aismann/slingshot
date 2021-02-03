@@ -90,7 +90,7 @@ void RenderShape(Circle* circle, SDL_Color color, int camera_x, int camera_y) {
     cam_center[0] = cam_center[0] - camera_x;
     cam_center[1] = cam_center[1] - camera_y;
 
-    int sides = 20;
+    int sides = 10;
     if (sides == 0)
     {
         sides = M_PI * circle->radius;

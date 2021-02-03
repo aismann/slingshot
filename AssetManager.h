@@ -14,6 +14,8 @@ void insertTexture(std::string name, std::string filepath);
 
 SDL_Texture* queryTexture(std::string name);
 
+void printTextureDimensions(std::string name);
+
 void removeTexture(std::string name);
 
 

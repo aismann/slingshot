@@ -180,7 +180,7 @@ int main(int argc, char* args[]) {
 
     SDL_Rect camera = { 0,0, SCREEN_WIDTH,SCREEN_HEIGHT };
 
-    std::string dustkid_filename = "C:\\Users\\aliha\\Downloads\\sprites\\player\\dustkid\\idle\\idle0001.png";
+    std::string dustkid_filename = "C:\\Users\\aliha\\Downloads\\sprites\\player\\dustkid\\idle\\idle0001_cropped.png";
     std::string bg_filename = "C:\\Users\\aliha\\Downloads\\30_scrolling\\30_scrolling\\bg.png";
     insertTexture("dustkid", dustkid_filename);
     insertTexture("bg", bg_filename);
@@ -189,7 +189,8 @@ int main(int argc, char* args[]) {
     TextureID background;
     setTextureID(&background, "bg");
 
-    
+    //printTextureDimensions("dustkid");
+
     printRect(dustkid.src);
     printRect(background.src);
 
@@ -216,8 +217,10 @@ int main(int argc, char* args[]) {
         }
         //todo::remove when collision with rectangles gets fleshed out
         //if player hits the ground 
-        if (player.hitbox.center[1] + player.hitbox.radius > LEVEL_HEIGHT/2) {
+        //need to dispace distance when hit ground
+        if (player.hitbox.center[1] + player.hitbox.radius > LEVEL_HEIGHT) {
             player.on_ground = true;
+            player.hitbox.center[1] = LEVEL_HEIGHT - player.hitbox.radius;
             //remove gravity
             removeVerticalForce(&player.physics);
             removeVerticalMomentum(&player.physics);
@@ -238,6 +241,7 @@ int main(int argc, char* args[]) {
         camera.y = player.hitbox.center[1] - SCREEN_HEIGHT / 2;
 
         //Keep the camera in bounds
+        
         if (camera.x < 0)
         {
             camera.x = 0;
@@ -254,16 +258,18 @@ int main(int argc, char* args[]) {
         {
             camera.y = LEVEL_HEIGHT - camera.h;
         }
-
+        
         SDL_SetRenderDrawColor(Renderer, 0, 0, 0, 0);
         SDL_RenderClear(Renderer);
 
         RenderTextureID(&background,0,0, &camera);
 
-        RenderTextureID(&dustkid,player.hitbox.center[0] - camera.x,player.hitbox.center[1] - camera.y);
+        glm::vec2 something = glm::vec2(player.hitbox.center[0] - camera.x, player.hitbox.center[1] - camera.y);
 
+        RenderTextureID(&dustkid,something );
+        
+        RenderShape(&player.hitbox, red,camera.x, camera.y);
 
-        //RenderShape(&player.hitbox, red, camera.x , camera.y);
         
         
         SDL_RenderPresent(Renderer);
